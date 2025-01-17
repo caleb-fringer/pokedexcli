@@ -25,6 +25,7 @@ func TestCleanInput(t *testing.T) {
 		},
 	}
 
+	t.Log("Testing cleanInput...")
 	for _, testCase := range testCases {
 		expected := testCase.expected
 		actual := cleanInput(testCase.input)
@@ -42,4 +43,5 @@ func TestCleanInput(t *testing.T) {
 			}
 		}
 	}
+	t.Log("Done! All tests passed :)")
 }

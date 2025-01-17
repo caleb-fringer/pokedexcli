@@ -35,14 +35,14 @@ func init() {
 	tokenizer = regexp.MustCompile("[[:alpha:]]+")
 }
 
-func main() {
+func doREPL() bool {
 	scanner := bufio.NewScanner(os.Stdin)
 
 	for {
 		fmt.Print("Pokedex > ")
 		if ok := scanner.Scan(); !ok {
 			fmt.Println()
-			os.Exit(0)
+			return false
 		}
 
 		line := scanner.Text()
@@ -85,7 +85,11 @@ func commandExit() error {
 
 func commandHelp() error {
 	helpTemplate := template.New("HelpTemplate")
-	helpTemplate = template.Must(helpTemplate.Parse("Welcome to the Pokedex!\nUsage:\n\n{{range .}}{{.Name}}: {{.Description}}\n{{end}}"))
+	helpTemplate = template.Must(helpTemplate.Parse(`Welcome to the Pokedex!
+Usage:
+
+{{range .}}{{.Name}}: {{.Description}}
+{{end}}`))
 	err := helpTemplate.Execute(os.Stdout, cmdRegistry)
 	if err != nil {
 		return err
