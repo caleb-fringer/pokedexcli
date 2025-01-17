@@ -18,6 +18,8 @@ type cliCommand struct {
 var cmdRegistry map[string]cliCommand
 var tokenizer *regexp.Regexp
 
+const helpPrompt = `Welcome to the Pokedex!\nUsage:\n\n{{range .}}{{.Name}}: {{.Description}}\n{{end}}`
+
 func init() {
 	cmdRegistry = map[string]cliCommand{
 		"exit": {
@@ -96,11 +98,7 @@ func commandExit(c *pageLink) error {
 
 func commandHelp(c *pageLink) error {
 	helpTemplate := template.New("HelpTemplate")
-	helpTemplate = template.Must(helpTemplate.Parse(`Welcome to the Pokedex!
-Usage:
-
-{{range .}}{{.Name}}: {{.Description}}
-{{end}}`))
+	helpTemplate = template.Must(helpTemplate.Parse(helpPrompt))
 	err := helpTemplate.Execute(os.Stdout, cmdRegistry)
 	if err != nil {
 		return err
