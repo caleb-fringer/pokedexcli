@@ -17,8 +17,9 @@ type cliCommand struct {
 
 var cmdRegistry map[string]cliCommand
 var tokenizer *regexp.Regexp
+var mapPage pageLink
 
-const helpPrompt = `Welcome to the Pokedex!\nUsage:\n\n{{range .}}{{.Name}}: {{.Description}}\n{{end}}`
+const helpPrompt = "Welcome to the Pokedex!\nUsage:\n\n{{range .}}{{.Name}}: {{.Description}}\n{{end}}"
 
 func init() {
 	cmdRegistry = map[string]cliCommand{
@@ -38,18 +39,18 @@ func init() {
 			Callback:    commandMap,
 		},
 		"mapb": {
-			Name:        "map-back",
+			Name:        "mapb",
 			Description: "Get the previous page of location-areas",
 			Callback:    commandMapback,
 		},
 	}
 
 	tokenizer = regexp.MustCompile("[[:alpha:]]+")
+	mapPage = pageLink{"https://pokeapi.co/api/v2/location-area", ""}
 }
 
 func doREPL() {
 	scanner := bufio.NewScanner(os.Stdin)
-	var c pageLink
 
 	for {
 		fmt.Print("Pokedex > ")
@@ -66,7 +67,7 @@ func doREPL() {
 		}
 
 		cmd := tokens[0]
-		doCommand(cmd, &c)
+		doCommand(cmd, &mapPage)
 	}
 }
 
@@ -107,9 +108,30 @@ func commandHelp(c *pageLink) error {
 }
 
 func commandMap(c *pageLink) error {
+	results, err := getLocationArea(c)
+	if err != nil {
+		return err
+	}
+
+	for _, location := range results {
+		fmt.Println(location.Name)
+	}
 	return nil
 }
 
 func commandMapback(c *pageLink) error {
+	if c.Previous == "" {
+		fmt.Println("you're on the first page")
+		return nil
+	}
+
+	c.Next = c.Previous
+	c.Previous = ""
+
+	err := commandMap(c)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
