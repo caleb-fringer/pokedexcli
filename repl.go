@@ -46,7 +46,7 @@ func init() {
 	}
 
 	tokenizer = regexp.MustCompile("[[:alpha:]]+")
-	mapPage = pageLink{"https://pokeapi.co/api/v2/location-area", ""}
+	mapPage = pageLink{"https://pokeapi.co/api/v2/location-area?offset=0&limit=20", ""}
 }
 
 func doREPL() {
