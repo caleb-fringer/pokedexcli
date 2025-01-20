@@ -7,17 +7,19 @@ import (
 	"regexp"
 	"strings"
 	"text/template"
+
+	"github.com/caleb-fringer/pokedexcli/internal/pokeapi"
 )
 
 type cliCommand struct {
 	Name        string
 	Description string
-	Callback    func(c *pageLink) error
+	Callback    func(c *pokeapi.PageLink) error
 }
 
 var cmdRegistry map[string]cliCommand
 var tokenizer *regexp.Regexp
-var mapPage pageLink
+var mapPage pokeapi.PageLink
 
 const helpPrompt = "Welcome to the Pokedex!\nUsage:\n\n{{range .}}{{.Name}}: {{.Description}}\n{{end}}"
 
@@ -46,7 +48,9 @@ func init() {
 	}
 
 	tokenizer = regexp.MustCompile("[[:alpha:]]+")
-	mapPage = pageLink{"https://pokeapi.co/api/v2/location-area?offset=0&limit=20", ""}
+	mapPage = pokeapi.PageLink{
+		Next:     "https://pokeapi.co/api/v2/location-area?offset=0&limit=20",
+		Previous: ""}
 }
 
 func doREPL() {
@@ -76,7 +80,7 @@ func cleanInput(text string) (tokens []string) {
 	return tokenizer.FindAllString(lower, -1)
 }
 
-func doCommand(command string, c *pageLink) bool {
+func doCommand(command string, c *pokeapi.PageLink) bool {
 	commandStruct, ok := cmdRegistry[command]
 	if !ok {
 		return false
@@ -91,13 +95,13 @@ func doCommand(command string, c *pageLink) bool {
 }
 
 // Callbacks for commands. Each command will return an optional error
-func commandExit(c *pageLink) error {
+func commandExit(c *pokeapi.PageLink) error {
 	fmt.Println("Closing the Pokedex... Goodbye!")
 	os.Exit(0)
 	return nil
 }
 
-func commandHelp(c *pageLink) error {
+func commandHelp(c *pokeapi.PageLink) error {
 	helpTemplate := template.New("HelpTemplate")
 	helpTemplate = template.Must(helpTemplate.Parse(helpPrompt))
 	err := helpTemplate.Execute(os.Stdout, cmdRegistry)
@@ -107,8 +111,8 @@ func commandHelp(c *pageLink) error {
 	return nil
 }
 
-func commandMap(c *pageLink) error {
-	results, err := getLocationArea(c)
+func commandMap(c *pokeapi.PageLink) error {
+	results, err := pokeapi.GetLocationArea(c)
 	if err != nil {
 		return err
 	}
@@ -119,7 +123,7 @@ func commandMap(c *pageLink) error {
 	return nil
 }
 
-func commandMapback(c *pageLink) error {
+func commandMapback(c *pokeapi.PageLink) error {
 	if c.Previous == "" {
 		fmt.Println("you're on the first page")
 		return nil

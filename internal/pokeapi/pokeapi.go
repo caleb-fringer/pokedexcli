@@ -1,4 +1,4 @@
-package main
+package pokeapi
 
 import (
 	"bytes"
@@ -11,7 +11,7 @@ import (
 	"github.com/caleb-fringer/pokedexcli/internal/pokecache"
 )
 
-type pageLink struct {
+type PageLink struct {
 	Next     string
 	Previous string
 }
@@ -22,7 +22,7 @@ type LocationArea struct {
 }
 
 type LocationAreaResponse struct {
-	pageLink
+	PageLink
 	Count   int
 	Results []LocationArea
 }
@@ -40,7 +40,7 @@ func init() {
 // An error occurs if the pages struct does not have an pages.Next string,
 // if the http.GET call fails, if the response's status code is not 200,
 // or if decoding the response fails.
-func getLocationArea(pages *pageLink) (results []LocationArea, err error) {
+func GetLocationArea(pages *PageLink) (results []LocationArea, err error) {
 	if pages.Next == "" {
 		return nil, fmt.Errorf("Uninitialized pages struct.")
 	}

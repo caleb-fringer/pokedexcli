@@ -1,14 +1,14 @@
-package main
+package pokeapi
 
 import "testing"
 
 func TestGetLocationArea(t *testing.T) {
-	endpoint := pageLink{
+	endpoint := PageLink{
 		"https://pokeapi.co/api/v2/location-area",
 		"",
 	}
 
-	results, err := getLocationArea(&endpoint)
+	results, err := GetLocationArea(&endpoint)
 	if err != nil {
 		t.Fatalf("Querying %s returned an error", endpoint.Next)
 	}
