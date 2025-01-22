@@ -1,4 +1,4 @@
-package main
+package repl
 
 import (
 	"bufio"
@@ -53,7 +53,7 @@ func init() {
 		Previous: ""}
 }
 
-func doREPL() {
+func DoREPL() {
 	scanner := bufio.NewScanner(os.Stdin)
 
 	for {
