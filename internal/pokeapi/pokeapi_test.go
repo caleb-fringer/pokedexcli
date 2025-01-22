@@ -5,7 +5,7 @@ import "testing"
 func TestGetLocationArea(t *testing.T) {
 	endpoint := "https://pokeapi.co/api/v2/location-area"
 
-	response, err := GetLocationArea(endpoint)
+	response, err := GetLocationAreas(endpoint)
 	if err != nil {
 		t.Fatalf("Querying %s returned an error", endpoint)
 	}

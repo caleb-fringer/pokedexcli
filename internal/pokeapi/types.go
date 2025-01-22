@@ -4,7 +4,7 @@
 package pokeapi
 
 // Response from https://pokeapi.co/api/v2/location-area/
-type LocationAreaResponse struct {
+type LocationAreasResponse struct {
 	Count    int    `json:"count"`
 	Next     string `json:"next"`
 	Previous string `json:"previous"`
@@ -15,7 +15,7 @@ type LocationAreaResponse struct {
 }
 
 // Response from https://pokeapi.co/api/v2/location-area/{id or name}/
-type LocationArea struct {
+type LocationAreaResponse struct {
 	EncounterMethodRates []struct {
 		EncounterMethod struct {
 			Name string `json:"name"`

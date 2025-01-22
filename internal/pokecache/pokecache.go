@@ -1,12 +1,13 @@
 package pokecache
 
 import (
+	"net/url"
 	"sync"
 	"time"
 )
 
 type Cache struct {
-	entries  map[string]cacheEntry
+	entries  map[url.URL]cacheEntry
 	mutex    *sync.Mutex
 	interval time.Duration
 }
@@ -18,7 +19,7 @@ type cacheEntry struct {
 
 func NewCache(interval time.Duration) (cache Cache) {
 	cache = Cache{
-		entries:  make(map[string]cacheEntry),
+		entries:  make(map[url.URL]cacheEntry),
 		mutex:    &sync.Mutex{},
 		interval: interval,
 	}
@@ -26,14 +27,14 @@ func NewCache(interval time.Duration) (cache Cache) {
 	return cache
 }
 
-func (cache *Cache) Add(key string, val []byte) {
+func (cache *Cache) Add(key url.URL, val []byte) {
 	entry := cacheEntry{time.Now(), val}
 	cache.mutex.Lock()
 	defer cache.mutex.Unlock()
 	cache.entries[key] = entry
 }
 
-func (cache *Cache) Get(key string) (entryData []byte, ok bool) {
+func (cache *Cache) Get(key url.URL) (entryData []byte, ok bool) {
 	cache.mutex.Lock()
 	defer cache.mutex.Unlock()
 	entry, ok := cache.entries[key]

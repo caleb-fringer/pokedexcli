@@ -2,6 +2,8 @@ package repl
 
 import (
 	"fmt"
+	"log"
+	"net/url"
 	"os"
 	"text/template"
 
@@ -27,9 +29,14 @@ const helpPrompt = "Welcome to the Pokedex!\nUsage:\n\n{{range .}}{{.Name}}: {{.
 
 func init() {
 	// Initialze the value of the map's pageState
+	initial_url, err := url.Parse("https://pokeapi.co/api/v2/location-area?offset=0&limit=20")
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	pageState = MapPagination{
-		Next:     "https://pokeapi.co/api/v2/location-area?offset=0&limit=20",
-		Previous: "",
+		Next:     *initial_url,
+		Previous: url.URL{},
 	}
 
 	// Initialize the command registry
@@ -94,8 +101,8 @@ func (h HelpHandler) Execute(args CommandParams) error {
  * `Execute` methods.
  */
 type MapPagination struct {
-	Next     string
-	Previous string
+	Next     url.URL
+	Previous url.URL
 }
 
 /* Map command
@@ -107,7 +114,7 @@ type MapPagination struct {
 type MapHandler struct{}
 
 func (h MapHandler) Execute(params CommandParams) error {
-	response, err := pokeapi.GetLocationArea(pageState.Next)
+	response, err := pokeapi.GetLocationAreas(pageState.Next)
 	if err != nil {
 		return err
 	}
@@ -116,7 +123,10 @@ func (h MapHandler) Execute(params CommandParams) error {
 		fmt.Println(locArea.Name)
 	}
 
-	pageState.Next, pageState.Previous = response.Next, response.Previous
+	err = pageState.updateState(response.Next, response.Previous)
+	if err != nil {
+		return fmt.Errorf("Error updating MapPagination state: %w", err)
+	}
 
 	return nil
 }
@@ -130,12 +140,12 @@ func (h MapHandler) Execute(params CommandParams) error {
 type MapBackHandler struct{}
 
 func (h MapBackHandler) Execute(params CommandParams) error {
-	if pageState.Previous == "" {
+	if pageState.Previous.Path == "" {
 		fmt.Println("you're on the first page")
 		return nil
 	}
 
-	response, err := pokeapi.GetLocationArea(pageState.Previous)
+	response, err := pokeapi.GetLocationAreas(pageState.Previous)
 	if err != nil {
 		return err
 	}
@@ -144,6 +154,25 @@ func (h MapBackHandler) Execute(params CommandParams) error {
 		fmt.Println(locArea.Name)
 	}
 
-	pageState.Next, pageState.Previous = response.Next, response.Previous
+	err = pageState.updateState(response.Next, response.Previous)
+	if err != nil {
+		return fmt.Errorf("Error updating MapPagination state: %w", err)
+	}
+
+	return nil
+}
+
+func (m *MapPagination) updateState(next, prev string) error {
+	newNext, err := url.Parse(next)
+	if err != nil {
+		return fmt.Errorf("Error updating MapPagination.Next: %w", err)
+	}
+
+	newPrevious, err := url.Parse(prev)
+	if err != nil {
+		return fmt.Errorf("Error updating MapPagination.Previous: %w", err)
+	}
+
+	pageState.Next, pageState.Previous = *newNext, *newPrevious
 	return nil
 }

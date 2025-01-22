@@ -6,11 +6,11 @@
 package pokeapi
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/caleb-fringer/pokedexcli/internal/pokecache"
@@ -22,8 +22,8 @@ func init() {
 	cache = pokecache.NewCache(5 * time.Second)
 }
 
-/* GetLocationArea
- * Given a url,  this function will:
+/* GetLocationAreas
+ * Given a url, this function will:
  *     -GETs the url from PokeAPI
  *     -Cache the raw data
  *     -Unmarshal the JSON response into a LocationAreaResponse object
@@ -32,24 +32,19 @@ func init() {
  * If the url is already in  the cache, it will unmarshal that data source
  * instead.
  *
- * An error occurs if the url is blank, if the http.GET call fails, if the
- * response's status code is not 200, or if decoding the response fails.
+ * Returns an error occurs if the url is blank, if the http.GET call fails, if
+ * the response's status code is not 200, or if decoding the response fails.
  */
-func GetLocationArea(url string) (response LocationAreaResponse, err error) {
-	if url == "" {
+func GetLocationAreas(url url.URL) (response LocationAreasResponse, err error) {
+	if url.Path == "" {
 		return response, fmt.Errorf("Uninitialized url")
 	}
 
-	var raw []byte
-	// Check cache for data. Store the raw data for unmarshalling
-	if data, ok := cache.Get(url); ok {
-		raw, err = io.ReadAll(bytes.NewReader(data))
-		if err != nil {
-			return response, fmt.Errorf("Error reading cached raw data: %w", err)
-		}
-	} else {
-		// Make HTTP request and cache result
-		res, err := http.Get(url)
+	data, ok := isCached(url)
+
+	// Make HTTP request and cache result on cache miss
+	if !ok {
+		res, err := http.Get(url.String())
 		if err != nil {
 			return response, fmt.Errorf("HTTP error when GET'ing %s: %w", url, err)
 		}
@@ -60,18 +55,47 @@ func GetLocationArea(url string) (response LocationAreaResponse, err error) {
 		}
 
 		// Cache the result for later use
-		raw, err = io.ReadAll(res.Body)
+		data, err = io.ReadAll(res.Body)
 		if err != nil {
 			return response, fmt.Errorf("Error reading raw response data to add to cache: %w", err)
 		}
-		cache.Add(url, raw)
+		cache.Add(url, data)
 	}
 
 	// Unmarshall response
-	err = json.Unmarshal(raw, &response)
+	err = json.Unmarshal(data, &response)
 
 	if err != nil {
 		return response, fmt.Errorf("Error unmarshalling response from %s: %w", url, err)
 	}
 	return response, nil
+}
+
+/* GetLocationArea
+ * Given a specific LocationArea name, this function will:
+ *     -GETs the url from PokeAPI
+ *     -Cache the raw data
+ *     -Unmarshal the JSON response into a LocationAreaResponse object
+ *     -Return the response.
+ *
+ * If the url is already in  the cache, it will unmarshal that data source
+ * instead.
+ *
+ * Returns an error occurs if the url is blank, if the http.GET call fails, if
+ * the response's status code is not 200, or if decoding the response fails.
+ */
+func GetLocationArea(name string) (response LocationAreaResponse, err error) {
+	return
+}
+
+/* isCached:
+ * Helper function that checks cache for a requested resource, returning the
+ * raw data and a boolean indicating if the cache hit or not
+ */
+func isCached(url url.URL) (data []byte, ok bool) {
+	data, ok = cache.Get(url)
+	if !ok {
+		return nil, false
+	}
+	return
 }
