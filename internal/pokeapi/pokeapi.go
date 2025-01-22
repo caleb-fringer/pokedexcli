@@ -11,77 +11,62 @@ import (
 	"github.com/caleb-fringer/pokedexcli/internal/pokecache"
 )
 
-type PageLink struct {
-	Next     string
-	Previous string
-}
-
-type LocationArea struct {
-	Name string
-	Url  string
-}
-
-type LocationAreaResponse struct {
-	PageLink
-	Count   int
-	Results []LocationArea
-}
-
 var cache pokecache.Cache
 
 func init() {
 	cache = pokecache.NewCache(5 * time.Second)
 }
 
-// Given a pageLink struct, this function GETS the pages.Next url from PokeAPI,
-// caches the raw data, unmarshals the JSON response into a slice of
-// LocationArea objects, and returns the slice. If the url is already in  the
-// cache, it will unmarshal that data source instead.
-// An error occurs if the pages struct does not have an pages.Next string,
-// if the http.GET call fails, if the response's status code is not 200,
-// or if decoding the response fails.
-func GetLocationArea(pages *PageLink) (results []LocationArea, err error) {
-	if pages.Next == "" {
-		return nil, fmt.Errorf("Uninitialized pages struct.")
+/* GetLocationArea
+ * Given a url,  this function will:
+ *     -GETs the url from PokeAPI
+ *     -Cache the raw data
+ *     -Unmarshal the JSON response into a LocationAreaResponse object
+ *     -Return the response.
+ *
+ * If the url is already in  the cache, it will unmarshal that data source
+ * instead.
+ *
+ * An error occurs if the url is blank, if the http.GET call fails, if the
+ * response's status code is not 200, or if decoding the response fails.
+ */
+func GetLocationArea(url string) (response LocationAreaResponse, err error) {
+	if url == "" {
+		return response, fmt.Errorf("Uninitialized url")
 	}
 
 	var raw []byte
 	// Check cache for data. Store the raw data for unmarshalling
-	if data, ok := cache.Get(pages.Next); ok {
+	if data, ok := cache.Get(url); ok {
 		raw, err = io.ReadAll(bytes.NewReader(data))
 		if err != nil {
-			return nil, fmt.Errorf("Error reading cached raw data: %w", err)
+			return response, fmt.Errorf("Error reading cached raw data: %w", err)
 		}
 	} else {
 		// Make HTTP request and cache result
-		res, err := http.Get(pages.Next)
+		res, err := http.Get(url)
 		if err != nil {
-			return nil, fmt.Errorf("HTTP error when GET'ing %s: %w", pages.Next, err)
+			return response, fmt.Errorf("HTTP error when GET'ing %s: %w", url, err)
 		}
 		defer res.Body.Close()
 
 		if res.StatusCode != 200 {
-			return nil, fmt.Errorf("Invalid HTTP response code from %s, status: %d", pages.Next, res.StatusCode)
+			return response, fmt.Errorf("Invalid HTTP response code from %s, status: %d", url, res.StatusCode)
 		}
 
 		// Cache the result for later use
 		raw, err = io.ReadAll(res.Body)
 		if err != nil {
-			return nil, fmt.Errorf("Error reading raw response data to add to cache: %w", err)
+			return response, fmt.Errorf("Error reading raw response data to add to cache: %w", err)
 		}
-		cache.Add(pages.Next, raw)
+		cache.Add(url, raw)
 	}
 
-	// Unmarshall response and extract results
-	var response LocationAreaResponse
+	// Unmarshall response
 	err = json.Unmarshal(raw, &response)
 
 	if err != nil {
-		return nil, fmt.Errorf("Error unmarshalling response from %s: %w", pages.Next, err)
+		return response, fmt.Errorf("Error unmarshalling response from %s: %w", url, err)
 	}
-
-	results = response.Results
-	pages.Next = response.Next
-	pages.Previous = response.Previous
-	return results, nil
+	return response, nil
 }
