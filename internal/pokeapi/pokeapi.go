@@ -1,3 +1,8 @@
+/* This package is responsible for making HTTP GET requests to pokeapi.co
+ * endpoints, caching responses, and unmarshalling JSON responses. All further
+ * data processing, extracting fields, and page management should be handled
+ * by the specific command handlers that consume this API.
+ */
 package pokeapi
 
 import (
