@@ -32,14 +32,17 @@ func init() {
 
 /* GetLocationAreas
  * Given a page offset and limit:
- *     -GETs the url from PokeAPI
+ *     -Construct the url for the requested endpoint
+ *     -GETs the resource from PokeAPI
  *     -Cache the raw data
- *     -Unmarshal the JSON response into a LocationAreaResponse object
+ *     -Unmarshal the JSON response into a LocationAreasResponse object
  *     -Return the response.
  *
  * If the url is already in  the cache, it will unmarshal that data source
  * instead.
  *
+ * Default values for offset, limit should be 0, 20 to request a single page of
+ * 20 LocationAreas
  * Returns an error occurs if the url is blank, if the http.GET call fails, if
  * the response's status code is not 200, or if decoding the response fails.
  */
@@ -85,7 +88,8 @@ func GetLocationAreas(offset, limit int) (response LocationAreasResponse, err er
 
 /* GetLocationArea
  * Given a specific LocationArea name, this function will:
- *     -GETs the url from PokeAPI
+ *     -Construct the url for the requested endpoint
+ *     -GETs the resource from PokeAPI
  *     -Cache the raw data
  *     -Unmarshal the JSON response into a LocationAreaResponse object
  *     -Return the response.
@@ -97,7 +101,39 @@ func GetLocationAreas(offset, limit int) (response LocationAreasResponse, err er
  * the response's status code is not 200, or if decoding the response fails.
  */
 func GetLocationArea(name string) (response LocationAreaResponse, err error) {
-	return
+	// Construct the url for the requested resource
+	url := BaseUrl.JoinPath("location-area", name)
+
+	// Check if the resource is cached
+	data, ok := isCached(*url)
+
+	// Make HTTP request and cache result on cache miss
+	if !ok {
+		res, err := http.Get(url.String())
+		if err != nil {
+			return response, fmt.Errorf("HTTP error when GET'ing %s: %w", url, err)
+		}
+		defer res.Body.Close()
+
+		if res.StatusCode != 200 {
+			return response, fmt.Errorf("Invalid HTTP response code from %s, status: %d", url, res.StatusCode)
+		}
+
+		// Cache the result for later use
+		data, err = io.ReadAll(res.Body)
+		if err != nil {
+			return response, fmt.Errorf("Error reading raw response data to add to cache: %w", err)
+		}
+		cache.Add(*url, data)
+	}
+
+	// Unmarshall response
+	err = json.Unmarshal(data, &response)
+
+	if err != nil {
+		return response, fmt.Errorf("Error unmarshalling response from %s: %w", url, err)
+	}
+	return response, nil
 }
 
 /* isCached:
