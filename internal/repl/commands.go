@@ -1,6 +1,7 @@
 package repl
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"net/url"
@@ -65,6 +66,11 @@ func init() {
 			Description: "Get the previous page of location-areas",
 			Handler:     MapBackHandler{},
 		},
+		"explore": {
+			Name:        "explore",
+			Description: "Explore a location-area for Pokemon",
+			Handler:     ExploreHandler{},
+		},
 	}
 }
 
@@ -112,8 +118,9 @@ type MapPagination struct {
 /* Map command
  * Takes no arguments. Prints the next page of map-area locations from Pokeapi.
  * Maintains the state of the current position in page results.
- * Returns an error if the handler fails to parse the provided arguments as a
- * MapPagination pointer, or if the pokeapi package returns an error.
+ * Returns an error if the handler fails to extract the page offset and limit
+ * from the pageState.Next and pageState.Previous urls, or if the pokeapi
+ * package returns an error.
  */
 type MapHandler struct{}
 
@@ -151,8 +158,9 @@ func (h MapHandler) Execute(params CommandParams) error {
 /* Mapback command
  * Takes no arguments. Prints the prev. page of map-area locations from Pokeapi,
  * or prints an message if MapBack is called while on the first page of results.
- * Returns an error if the handler fails to parse the provided arguments as a
- * MapPagination pointer, or if the pokeapi package returns an error.
+ * Returns an error if the handler fails to extract the page offset and limit
+ * from the pageState.Next and pageState.Previous urls, or if the pokeapi
+ * package returns an error.
  */
 type MapBackHandler struct{}
 
@@ -205,6 +213,44 @@ func (m *MapPagination) updateState(next, prev string) error {
 	}
 
 	m.Next, m.Previous = newNext, newPrev
+
+	return nil
+}
+
+/* Explore command.
+ * Takes the name of a location-area to explore, and prints a list of all
+ * Pokemon at that location, or "Location not found" if the pokeapi returns a
+ * status code 404.
+ *
+ * Returns an error if the handler fails to coerce the provided arguments as a
+ * string, or if the pokeapi package returns an error.
+ */
+type ExploreHandler struct{}
+
+func (h ExploreHandler) Execute(params CommandParams) error {
+	pokemonName, ok := params.(string)
+	if !ok {
+		return errors.New("Failed type assertion to string. ExploreHandler requires a string argument")
+	}
+
+	fmt.Printf("Exploring %v...\n", pokemonName)
+
+	response, err := pokeapi.GetLocationArea(pokemonName)
+	if err != nil {
+		switch err.(type) {
+		case pokeapi.LocationNotFoundError:
+			fmt.Println("Location not found!")
+			return err
+		default:
+			return fmt.Errorf("Error fetching requested location-area: %w", err)
+		}
+	}
+
+	fmt.Println("Found Pokemon:")
+	for _, pokemon := range response.PokemonEncounters {
+		fmt.Printf("\t- %s\n", pokemon.Pokemon.Name)
+	}
+	fmt.Println()
 
 	return nil
 }

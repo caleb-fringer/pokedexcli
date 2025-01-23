@@ -9,9 +9,11 @@ import (
 )
 
 var tokenizer *regexp.Regexp
+var exploreArgValidator *regexp.Regexp
 
 func init() {
-	tokenizer = regexp.MustCompile("[[:alpha:]]+")
+	//tokenizer = regexp.MustCompile("[[:alpha:]]+")
+	tokenizer = regexp.MustCompile("[[:alpha:]]+(?:-[[:alpha:]]+)*")
 }
 
 func DoREPL() {
@@ -32,7 +34,8 @@ func DoREPL() {
 		}
 
 		cmd := tokens[0]
-		doCommand(cmd)
+		args := tokens[1:]
+		doCommand(cmd, args)
 	}
 }
 
@@ -41,17 +44,25 @@ func cleanInput(text string) (tokens []string) {
 	return tokenizer.FindAllString(lower, -1)
 }
 
-func doCommand(command string) bool {
+func doCommand(command string, args []string) bool {
 	// Fetch the command structure, returning if not found.
 	commandStruct, ok := registry[command]
 	if !ok {
+		fmt.Println("Please provide a supported command. Try `help` if you don't know them!")
 		return false
 	}
 
 	// Populate the correct CommandParams struct according to the cmd called.
 	var params CommandParams
+
 	switch command {
 	// Here we will populate special CommandParam structs as needed.
+	case "explore":
+		if len(args) < 1 {
+			fmt.Println("Please provide a location-area to explore!")
+			return false
+		}
+		params = args[0]
 	}
 
 	err := commandStruct.Execute(params)

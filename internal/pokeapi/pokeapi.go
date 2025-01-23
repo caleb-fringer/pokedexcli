@@ -86,6 +86,15 @@ func GetLocationAreas(offset, limit int) (response LocationAreasResponse, err er
 	return response, nil
 }
 
+type LocationNotFoundError struct {
+	StatusCode   int
+	LocationArea string
+}
+
+func (e LocationNotFoundError) Error() string {
+	return fmt.Sprintf("Location-area %v not found: Status code %d", e.LocationArea, e.StatusCode)
+}
+
 /* GetLocationArea
  * Given a specific LocationArea name, this function will:
  *     -Construct the url for the requested endpoint
@@ -115,7 +124,10 @@ func GetLocationArea(name string) (response LocationAreaResponse, err error) {
 		}
 		defer res.Body.Close()
 
-		if res.StatusCode != 200 {
+		if res.StatusCode == http.StatusNotFound {
+			return response, LocationNotFoundError{res.StatusCode, name}
+		}
+		if res.StatusCode != http.StatusOK {
 			return response, fmt.Errorf("Invalid HTTP response code from %s, status: %d", url, res.StatusCode)
 		}
 
