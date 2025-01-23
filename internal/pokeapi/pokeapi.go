@@ -51,7 +51,7 @@ func GetLocationAreas(offset, limit int) (response LocationAreasResponse, err er
 
 	// Construct url w/ populated query params
 	url := BaseUrl.JoinPath("location-area")
-	log.Default().Printf("Constructed URL: %v", url)
+	url.RawQuery = queryParams.Encode()
 	data, ok := isCached(*url)
 
 	// Make HTTP request and cache result on cache miss

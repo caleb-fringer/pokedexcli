@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/url"
 	"os"
+	"strconv"
 	"text/template"
 
 	"github.com/caleb-fringer/pokedexcli/internal/pokeapi"
@@ -25,18 +26,21 @@ type Command struct {
 var registry map[string]Command
 var pageState MapPagination
 
+const pageSize = 20
 const helpPrompt = "Welcome to the Pokedex!\nUsage:\n\n{{range .}}{{.Name}}: {{.Description}}\n{{end}}"
 
 func init() {
 	// Initialze the value of the map's pageState
-	initial_url, err := url.Parse("https://pokeapi.co/api/v2/location-area?offset=0&limit=20")
+	initial_url, err := url.Parse(
+		fmt.Sprintf("https://pokeapi.co/api/v2/location-area?offset=0&limit=%d",
+			pageSize))
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	pageState = MapPagination{
-		Next:     *initial_url,
-		Previous: url.URL{},
+		Next:     initial_url,
+		Previous: &url.URL{},
 	}
 
 	// Initialize the command registry
@@ -101,8 +105,8 @@ func (h HelpHandler) Execute(args CommandParams) error {
  * `Execute` methods.
  */
 type MapPagination struct {
-	Next     url.URL
-	Previous url.URL
+	Next     *url.URL
+	Previous *url.URL
 }
 
 /* Map command
@@ -114,7 +118,19 @@ type MapPagination struct {
 type MapHandler struct{}
 
 func (h MapHandler) Execute(params CommandParams) error {
-	response, err := pokeapi.GetLocationAreas(pageState.Next)
+	queryParams := pageState.Next.Query()
+
+	offset, err := strconv.Atoi(queryParams.Get("offset"))
+	if err != nil {
+		return fmt.Errorf("Error parsing offset query param to int: %w", err)
+	}
+
+	limit, err := strconv.Atoi(queryParams.Get("limit"))
+	if err != nil {
+		return fmt.Errorf("Error parsing limit query param to int: %w", err)
+	}
+
+	response, err := pokeapi.GetLocationAreas(offset, limit)
 	if err != nil {
 		return err
 	}
@@ -122,6 +138,7 @@ func (h MapHandler) Execute(params CommandParams) error {
 	for _, locArea := range response.Results {
 		fmt.Println(locArea.Name)
 	}
+	fmt.Println()
 
 	err = pageState.updateState(response.Next, response.Previous)
 	if err != nil {
@@ -145,7 +162,19 @@ func (h MapBackHandler) Execute(params CommandParams) error {
 		return nil
 	}
 
-	response, err := pokeapi.GetLocationAreas(pageState.Previous)
+	queryParams := pageState.Previous.Query()
+
+	offset, err := strconv.Atoi(queryParams.Get("offset"))
+	if err != nil {
+		return fmt.Errorf("Error parsing offset query param to int: %w", err)
+	}
+
+	limit, err := strconv.Atoi(queryParams.Get("limit"))
+	if err != nil {
+		return fmt.Errorf("Error parsing limit query param to int: %w", err)
+	}
+
+	response, err := pokeapi.GetLocationAreas(offset, limit)
 	if err != nil {
 		return err
 	}
@@ -153,8 +182,10 @@ func (h MapBackHandler) Execute(params CommandParams) error {
 	for _, locArea := range response.Results {
 		fmt.Println(locArea.Name)
 	}
+	fmt.Println()
 
 	err = pageState.updateState(response.Next, response.Previous)
+
 	if err != nil {
 		return fmt.Errorf("Error updating MapPagination state: %w", err)
 	}
@@ -168,11 +199,12 @@ func (m *MapPagination) updateState(next, prev string) error {
 		return fmt.Errorf("Error updating MapPagination.Next: %w", err)
 	}
 
-	newPrevious, err := url.Parse(prev)
+	newPrev, err := url.Parse(prev)
 	if err != nil {
-		return fmt.Errorf("Error updating MapPagination.Previous: %w", err)
+		return fmt.Errorf("Error updating MapPagination.Prev: %w", err)
 	}
 
-	pageState.Next, pageState.Previous = *newNext, *newPrevious
+	m.Next, m.Previous = newNext, newPrev
+
 	return nil
 }
