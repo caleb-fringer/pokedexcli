@@ -3,11 +3,9 @@ package pokeapi
 import "testing"
 
 func TestGetLocationArea(t *testing.T) {
-	endpoint := "https://pokeapi.co/api/v2/location-area"
-
-	response, err := GetLocationAreas(endpoint)
+	response, err := GetLocationAreas(0, 20)
 	if err != nil {
-		t.Fatalf("Querying %s returned an error", endpoint)
+		t.Fatalf("Querying https://pokeapi.co/api/v2/location-area?offset=0&limit=20 returned an error: %v", err)
 	}
 
 	firstArea := response.Results[0].Name

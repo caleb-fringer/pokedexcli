@@ -9,21 +9,29 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
+	"strconv"
 	"time"
 
 	"github.com/caleb-fringer/pokedexcli/internal/pokecache"
 )
 
+var BaseUrl *url.URL
 var cache pokecache.Cache
 
 func init() {
+	var err error
+	BaseUrl, err = url.Parse("https://pokeapi.co/api/v2/")
+	if err != nil {
+		log.Fatal("Error parsing base URL for pokeapi: %w", err)
+	}
 	cache = pokecache.NewCache(5 * time.Second)
 }
 
 /* GetLocationAreas
- * Given a url, this function will:
+ * Given a page offset and limit:
  *     -GETs the url from PokeAPI
  *     -Cache the raw data
  *     -Unmarshal the JSON response into a LocationAreaResponse object
@@ -35,12 +43,16 @@ func init() {
  * Returns an error occurs if the url is blank, if the http.GET call fails, if
  * the response's status code is not 200, or if decoding the response fails.
  */
-func GetLocationAreas(url url.URL) (response LocationAreasResponse, err error) {
-	if url.Path == "" {
-		return response, fmt.Errorf("Uninitialized url")
-	}
+func GetLocationAreas(offset, limit int) (response LocationAreasResponse, err error) {
+	// Construct query params
+	queryParams := url.Values{}
+	queryParams.Add("offset", strconv.Itoa(offset))
+	queryParams.Add("limit", strconv.Itoa(limit))
 
-	data, ok := isCached(url)
+	// Construct url w/ populated query params
+	url := BaseUrl.JoinPath("location-area")
+	log.Default().Printf("Constructed URL: %v", url)
+	data, ok := isCached(*url)
 
 	// Make HTTP request and cache result on cache miss
 	if !ok {
@@ -59,7 +71,7 @@ func GetLocationAreas(url url.URL) (response LocationAreasResponse, err error) {
 		if err != nil {
 			return response, fmt.Errorf("Error reading raw response data to add to cache: %w", err)
 		}
-		cache.Add(url, data)
+		cache.Add(*url, data)
 	}
 
 	// Unmarshall response
