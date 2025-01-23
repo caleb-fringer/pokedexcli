@@ -19,7 +19,7 @@ import (
 )
 
 var BaseUrl *url.URL
-var cache pokecache.Cache
+var cache *pokecache.Cache
 
 func init() {
 	var err error
