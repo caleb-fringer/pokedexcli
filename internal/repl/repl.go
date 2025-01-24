@@ -63,6 +63,12 @@ func doCommand(command string, args []string) bool {
 			return false
 		}
 		params = args[0]
+	case "catch":
+		if len(args) < 1 {
+			fmt.Println("Please provide a Pokemon to capture!")
+			return false
+		}
+		params = args[0]
 	}
 
 	err := commandStruct.Execute(params)

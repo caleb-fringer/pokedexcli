@@ -71,6 +71,11 @@ func init() {
 			Description: "Explore a location-area for Pokemon",
 			Handler:     ExploreHandler{},
 		},
+		"catch": {
+			Name:        "catch",
+			Description: "Catch the given Pokemon",
+			Handler:     CatchHandler{},
+		},
 	}
 }
 
@@ -252,5 +257,20 @@ func (h ExploreHandler) Execute(params CommandParams) error {
 	}
 	fmt.Println()
 
+	return nil
+}
+
+/* Catch command
+ *
+ */
+type CatchHandler struct{}
+
+func (h CatchHandler) Execute(params CommandParams) error {
+	pokemonName, ok := params.(string)
+	if !ok {
+		return errors.New("Failed type assertion to string. ExploreHandler requires a string argument")
+	}
+
+	fmt.Printf("Throwing a Pokeball at %s...\n", pokemonName)
 	return nil
 }
