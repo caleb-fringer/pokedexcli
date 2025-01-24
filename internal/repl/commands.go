@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math/rand"
 	"net/url"
 	"os"
 	"strconv"
@@ -74,7 +75,7 @@ func init() {
 		"catch": {
 			Name:        "catch",
 			Description: "Catch the given Pokemon",
-			Handler:     CatchHandler{},
+			Handler:     CatchHandler{make(map[string]pokeapi.Pokemon)},
 		},
 	}
 }
@@ -263,7 +264,9 @@ func (h ExploreHandler) Execute(params CommandParams) error {
 /* Catch command
  * TODO: Document me!
  */
-type CatchHandler struct{}
+type CatchHandler struct {
+	caughtPokemon map[string]pokeapi.Pokemon
+}
 
 func (h CatchHandler) Execute(params CommandParams) error {
 	pokemonName, ok := params.(string)
@@ -271,7 +274,10 @@ func (h CatchHandler) Execute(params CommandParams) error {
 		return errors.New("Failed type assertion to string. CatchHandler requires a string argument")
 	}
 
-	fmt.Printf("Throwing a Pokeball at %s...\n", pokemonName)
+	if _, ok := h.caughtPokemon[pokemonName]; ok {
+		fmt.Printf("You've already caught a %s!\n", pokemonName)
+		return nil
+	}
 
 	response, err := pokeapi.GetPokemon(pokemonName)
 	if err != nil {
@@ -286,5 +292,45 @@ func (h CatchHandler) Execute(params CommandParams) error {
 
 	fmt.Printf("Base experience: %d\n", response.BaseExperience)
 
+	fmt.Printf("Throwing a Pokeball at %s...\n", pokemonName)
+	caught := catchHelper(response.BaseExperience)
+
+	if caught {
+		fmt.Printf("You caught %s!\n", pokemonName)
+		h.caughtPokemon[pokemonName] = response
+	} else {
+		fmt.Printf("You failed to catch %s!\n", pokemonName)
+	}
+
 	return nil
+}
+
+// RNG Helpers and constants
+const (
+	minBaseExp = 64
+	maxBaseExp = 608
+	pMin       = 0.1
+	pMax       = 0.9
+	seed       = 69420
+)
+
+var pRawMin = normalizeBaseExp(maxBaseExp)
+var pRawMax = normalizeBaseExp(minBaseExp)
+var rng = rand.New(rand.NewSource(seed))
+
+func normalizeBaseExp(baseExp int) float64 {
+	return float64((baseExp - minBaseExp)) / (maxBaseExp - minBaseExp)
+}
+
+// TODO: Tune me!
+func catchHelper(baseExp int) bool {
+	normalizedBase := normalizeBaseExp(baseExp)
+	pRaw := 1 / (normalizedBase + 1)
+	pCapture := pMin + (pRaw-pRawMin)*((pMax-pMin)/(pRawMax-pRawMin))
+
+	fmt.Printf("You have a %.2f%% chance of capturing the Pokemon!\n", pCapture)
+	if rng.Float64() <= pCapture {
+		return true
+	}
+	return false
 }
