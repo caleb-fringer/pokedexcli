@@ -30,6 +30,18 @@ func init() {
 	cache = pokecache.NewCache(5 * time.Second)
 }
 
+/* isCached:
+ * Helper function that checks cache for a requested resource, returning the
+ * raw data and a boolean indicating if the cache hit or not
+ */
+func isCached(url url.URL) (data []byte, ok bool) {
+	data, ok = cache.Get(url)
+	if !ok {
+		return nil, false
+	}
+	return
+}
+
 /* GetLocationAreas
  * Given a page offset and limit:
  *     -Construct the url for the requested endpoint
@@ -86,6 +98,9 @@ func GetLocationAreas(offset, limit int) (response LocationAreasResponse, err er
 	return response, nil
 }
 
+// This is a special error to indicate that a 404 error occured so the caller
+// of GetLocationArea may distinguish between a bad resource name and other
+// more problematic errors.
 type LocationNotFoundError struct {
 	StatusCode   int
 	LocationArea string
@@ -146,16 +161,4 @@ func GetLocationArea(name string) (response LocationAreaResponse, err error) {
 		return response, fmt.Errorf("Error unmarshalling response from %s: %w", url, err)
 	}
 	return response, nil
-}
-
-/* isCached:
- * Helper function that checks cache for a requested resource, returning the
- * raw data and a boolean indicating if the cache hit or not
- */
-func isCached(url url.URL) (data []byte, ok bool) {
-	data, ok = cache.Get(url)
-	if !ok {
-		return nil, false
-	}
-	return
 }
