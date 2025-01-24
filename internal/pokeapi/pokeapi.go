@@ -99,15 +99,15 @@ func GetLocationAreas(offset, limit int) (response LocationAreasResponse, err er
 }
 
 // This is a special error to indicate that a 404 error occured so the caller
-// of GetLocationArea may distinguish between a bad resource name and other
+// of a GET request may distinguish between a bad resource name and other
 // more problematic errors.
-type LocationNotFoundError struct {
+type ResourceNotFoundError struct {
 	StatusCode   int
-	LocationArea string
+	ResourceName string
 }
 
-func (e LocationNotFoundError) Error() string {
-	return fmt.Sprintf("Location-area %v not found: Status code %d", e.LocationArea, e.StatusCode)
+func (e ResourceNotFoundError) Error() string {
+	return fmt.Sprintf("Resource %v not found: Status code %d", e.ResourceName, e.StatusCode)
 }
 
 /* GetLocationArea
@@ -140,7 +140,60 @@ func GetLocationArea(name string) (response LocationAreaResponse, err error) {
 		defer res.Body.Close()
 
 		if res.StatusCode == http.StatusNotFound {
-			return response, LocationNotFoundError{res.StatusCode, name}
+			return response, ResourceNotFoundError{res.StatusCode, name}
+		}
+		if res.StatusCode != http.StatusOK {
+			return response, fmt.Errorf("Invalid HTTP response code from %s, status: %d", url, res.StatusCode)
+		}
+
+		// Cache the result for later use
+		data, err = io.ReadAll(res.Body)
+		if err != nil {
+			return response, fmt.Errorf("Error reading raw response data to add to cache: %w", err)
+		}
+		cache.Add(*url, data)
+	}
+
+	// Unmarshall response
+	err = json.Unmarshal(data, &response)
+
+	if err != nil {
+		return response, fmt.Errorf("Error unmarshalling response from %s: %w", url, err)
+	}
+	return response, nil
+}
+
+/* GetPokemon
+ * Given a specific Pokemon name, this function will:
+ *     -Construct the url for the requested endpoint
+ *     -GETs the resource from PokeAPI
+ *     -Cache the raw data
+ *     -Unmarshal the JSON response into a Pokemon object
+ *     -Return the response.
+ *
+ * If the url is already in  the cache, it will unmarshal that data source
+ * instead.
+ *
+ * Returns an error occurs if the url is blank, if the http.GET call fails, if
+ * the response's status code is not 200, or if decoding the response fails.
+ */
+func GetPokemon(name string) (response Pokemon, err error) {
+	// Construct the url for the requested resource
+	url := BaseUrl.JoinPath("pokemon", name)
+
+	// Check if the resource is cached
+	data, ok := isCached(*url)
+
+	// Make HTTP request and cache result on cache miss
+	if !ok {
+		res, err := http.Get(url.String())
+		if err != nil {
+			return response, fmt.Errorf("HTTP error when GET'ing %s: %w", url, err)
+		}
+		defer res.Body.Close()
+
+		if res.StatusCode == http.StatusNotFound {
+			return response, ResourceNotFoundError{res.StatusCode, name}
 		}
 		if res.StatusCode != http.StatusOK {
 			return response, fmt.Errorf("Invalid HTTP response code from %s, status: %d", url, res.StatusCode)

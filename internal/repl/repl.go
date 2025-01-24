@@ -6,6 +6,8 @@ import (
 	"os"
 	"regexp"
 	"strings"
+
+	"github.com/caleb-fringer/pokedexcli/internal/pokeapi"
 )
 
 var tokenizer *regexp.Regexp
@@ -73,7 +75,10 @@ func doCommand(command string, args []string) bool {
 
 	err := commandStruct.Execute(params)
 	if err != nil {
-		fmt.Println(err)
+		// Ignore ResourceNotFoundErrors, they do not need to be handled.
+		if _, ok := err.(pokeapi.ResourceNotFoundError); !ok {
+			fmt.Println(err)
+		}
 		return false
 	}
 	return true

@@ -233,17 +233,17 @@ func (m *MapPagination) updateState(next, prev string) error {
 type ExploreHandler struct{}
 
 func (h ExploreHandler) Execute(params CommandParams) error {
-	pokemonName, ok := params.(string)
+	locationAreaName, ok := params.(string)
 	if !ok {
 		return errors.New("Failed type assertion to string. ExploreHandler requires a string argument")
 	}
 
-	fmt.Printf("Exploring %v...\n", pokemonName)
+	fmt.Printf("Exploring %v...\n", locationAreaName)
 
-	response, err := pokeapi.GetLocationArea(pokemonName)
+	response, err := pokeapi.GetLocationArea(locationAreaName)
 	if err != nil {
 		switch err.(type) {
-		case pokeapi.LocationNotFoundError:
+		case pokeapi.ResourceNotFoundError:
 			fmt.Println("Location not found!")
 			return err
 		default:
@@ -261,16 +261,30 @@ func (h ExploreHandler) Execute(params CommandParams) error {
 }
 
 /* Catch command
- *
+ * TODO: Document me!
  */
 type CatchHandler struct{}
 
 func (h CatchHandler) Execute(params CommandParams) error {
 	pokemonName, ok := params.(string)
 	if !ok {
-		return errors.New("Failed type assertion to string. ExploreHandler requires a string argument")
+		return errors.New("Failed type assertion to string. CatchHandler requires a string argument")
 	}
 
 	fmt.Printf("Throwing a Pokeball at %s...\n", pokemonName)
+
+	response, err := pokeapi.GetPokemon(pokemonName)
+	if err != nil {
+		switch err.(type) {
+		case pokeapi.ResourceNotFoundError:
+			fmt.Println("Pokemon not found!")
+			return err
+		default:
+			return fmt.Errorf("Error fetching requested Pokemon: %w", err)
+		}
+	}
+
+	fmt.Printf("Base experience: %d\n", response.BaseExperience)
+
 	return nil
 }
