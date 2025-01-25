@@ -82,6 +82,11 @@ func init() {
 			Description: "Inspect the given Pokemon",
 			Handler:     InspectHandler{},
 		},
+		"pokedex": {
+			Name:        "pokedex",
+			Description: "List captured pokemon",
+			Handler:     PokedexHandler{},
+		},
 	}
 }
 
@@ -385,6 +390,21 @@ func (h InspectHandler) Execute(params CommandParams) error {
 	err := inspectPokemonTemplate.Execute(os.Stdout, caughtPokemon[pokemonName])
 	if err != nil {
 		return fmt.Errorf("Error printing inspect template: %w", err)
+	}
+	return nil
+}
+
+type PokedexHandler struct{}
+
+func (h PokedexHandler) Execute(params CommandParams) error {
+	if len(caughtPokemon) < 1 {
+		fmt.Println("You haven't caught any Pokemon!")
+		return nil
+	}
+
+	fmt.Println("Your Pokedex:")
+	for pokemon := range caughtPokemon {
+		fmt.Printf("\t-%s\n", pokemon)
 	}
 	return nil
 }
