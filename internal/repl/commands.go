@@ -262,7 +262,19 @@ func (h ExploreHandler) Execute(params CommandParams) error {
 }
 
 /* Catch command
- * TODO: Document me!
+ * Catch takes a Pokemon name (string) and:
+ *    -If the pokemon has already been caught in this session, print a message
+ *     saying as such and return nil.
+ *    -Calls Pokeapi for data on that Pokemon
+ *    -If the Pokeapi call returns 200, then it will use the base experience
+ *     field to assign a probabibility of success in [0.1,0.9].
+ *    -Then, it will roll a random number in [0.0,1.0) and if that number is
+ *     less than the success probability, it will tell the user that the
+ *     Pokemon was caught, then add that Pokemon to the set of caught Pokemon
+ *
+ * Throws an error if:
+ *    -The params argument cannot be asserted as a string
+ *    -The call to pokeapi returns an error or the Pokemon was not found
  */
 type CatchHandler struct {
 	caughtPokemon map[string]pokeapi.Pokemon
@@ -290,8 +302,6 @@ func (h CatchHandler) Execute(params CommandParams) error {
 		}
 	}
 
-	fmt.Printf("Base experience: %d\n", response.BaseExperience)
-
 	fmt.Printf("Throwing a Pokeball at %s...\n", pokemonName)
 	caught := catchHelper(response.BaseExperience)
 
@@ -314,19 +324,25 @@ const (
 	seed       = 69420
 )
 
-var pRawMin = normalizeBaseExp(maxBaseExp)
-var pRawMax = normalizeBaseExp(minBaseExp)
+var pRawMin = rawProb(maxBaseExp)
+var pRawMax = rawProb(minBaseExp)
 var rng = rand.New(rand.NewSource(seed))
 
 func normalizeBaseExp(baseExp int) float64 {
 	return float64((baseExp - minBaseExp)) / (maxBaseExp - minBaseExp)
 }
 
-// TODO: Tune me!
+func rawProb(baseExp int) float64 {
+	return 1 / (normalizeBaseExp(baseExp) + 1)
+}
+
+// Scaled raw probability
+func pCap(baseExp int) float64 {
+	return pMin + (rawProb(baseExp)-pRawMin)*((pMax-pMin)/(pRawMax-pRawMin))
+}
+
 func catchHelper(baseExp int) bool {
-	normalizedBase := normalizeBaseExp(baseExp)
-	pRaw := 1 / (normalizedBase + 1)
-	pCapture := pMin + (pRaw-pRawMin)*((pMax-pMin)/(pRawMax-pRawMin))
+	pCapture := pCap(baseExp)
 
 	fmt.Printf("You have a %.2f%% chance of capturing the Pokemon!\n", pCapture)
 	if rng.Float64() <= pCapture {
