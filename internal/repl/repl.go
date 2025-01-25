@@ -15,7 +15,7 @@ var exploreArgValidator *regexp.Regexp
 
 func init() {
 	//tokenizer = regexp.MustCompile("[[:alpha:]]+")
-	tokenizer = regexp.MustCompile("[[:alpha:]]+(?:-[[:alpha:]]+)*")
+	tokenizer = regexp.MustCompile("[[:alpha:]]+(?:-[[:alnum:]]+)*")
 }
 
 func DoREPL() {
@@ -65,7 +65,7 @@ func doCommand(command string, args []string) bool {
 			return false
 		}
 		params = args[0]
-	case "catch":
+	case "catch", "inspect":
 		if len(args) < 1 {
 			fmt.Println("Please provide a Pokemon to capture!")
 			return false

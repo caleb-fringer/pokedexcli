@@ -75,7 +75,12 @@ func init() {
 		"catch": {
 			Name:        "catch",
 			Description: "Catch the given Pokemon",
-			Handler:     CatchHandler{make(map[string]pokeapi.Pokemon)},
+			Handler:     CatchHandler{},
+		},
+		"inspect": {
+			Name:        "inspect",
+			Description: "Inspect the given Pokemon",
+			Handler:     InspectHandler{},
 		},
 	}
 }
@@ -261,6 +266,9 @@ func (h ExploreHandler) Execute(params CommandParams) error {
 	return nil
 }
 
+// Used by CatchHandler & InspectHandler
+var caughtPokemon = make(map[string]pokeapi.Pokemon)
+
 /* Catch command
  * Catch takes a Pokemon name (string) and:
  *    -If the pokemon has already been caught in this session, print a message
@@ -276,9 +284,7 @@ func (h ExploreHandler) Execute(params CommandParams) error {
  *    -The params argument cannot be asserted as a string
  *    -The call to pokeapi returns an error or the Pokemon was not found
  */
-type CatchHandler struct {
-	caughtPokemon map[string]pokeapi.Pokemon
-}
+type CatchHandler struct{}
 
 func (h CatchHandler) Execute(params CommandParams) error {
 	pokemonName, ok := params.(string)
@@ -286,7 +292,7 @@ func (h CatchHandler) Execute(params CommandParams) error {
 		return errors.New("Failed type assertion to string. CatchHandler requires a string argument")
 	}
 
-	if _, ok := h.caughtPokemon[pokemonName]; ok {
+	if _, ok := caughtPokemon[pokemonName]; ok {
 		fmt.Printf("You've already caught a %s!\n", pokemonName)
 		return nil
 	}
@@ -307,7 +313,7 @@ func (h CatchHandler) Execute(params CommandParams) error {
 
 	if caught {
 		fmt.Printf("You caught %s!\n", pokemonName)
-		h.caughtPokemon[pokemonName] = response
+		caughtPokemon[pokemonName] = response
 	} else {
 		fmt.Printf("You failed to catch %s!\n", pokemonName)
 	}
@@ -349,4 +355,36 @@ func catchHelper(baseExp int) bool {
 		return true
 	}
 	return false
+}
+
+// Output template for InspectHandler
+var inspectTemplateString string = ("Name: {{.Name}}\n" +
+	"Height: {{.Height}}\n" +
+	"Weight: {{.Weight}}\n" +
+	"Stats:\n" +
+	"{{range .Stats}}\t-{{.Stat.Name}}: {{.BaseStat}}\n{{end}}" +
+	"Types:\n" +
+	"{{range .Types}}\t-{{.Type.Name}}\n{{end}}")
+
+var inspectPokemonTemplate = template.Must(template.New("inspectPokemon").Parse(inspectTemplateString))
+
+type InspectHandler struct{}
+
+func (h InspectHandler) Execute(params CommandParams) error {
+	pokemonName, ok := params.(string)
+
+	if !ok {
+		return errors.New("Failed type assertion to string. CatchHandler requires a string argument")
+	}
+
+	if _, ok := caughtPokemon[pokemonName]; !ok {
+		fmt.Printf("You haven't caught %s yet!\n", pokemonName)
+		return nil
+	}
+
+	err := inspectPokemonTemplate.Execute(os.Stdout, caughtPokemon[pokemonName])
+	if err != nil {
+		return fmt.Errorf("Error printing inspect template: %w", err)
+	}
+	return nil
 }
