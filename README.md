@@ -15,3 +15,6 @@ discoverable with the `help` command. Use `map` and `mapb` to explore locations
 available. Use `explore location-name` to get information about the Pokemon in
 that location! You can attempt to catch it with `catch pokemon-name`. Once a 
 Pokemon has been caught, it may be inspected with `inspect pokemon-name`.
+
+# Demo
+<video src="demo.mp4" controls></video>
